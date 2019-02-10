@@ -1,0 +1,65 @@
+group 'com.egoebelbecker.jaegertutorial'
+version '1.0-SNAPSHOT'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.5.9.RELEASE")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+
+repositories {
+    mavenCentral()
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+
+dependencies {
+    compile("org.springframework.boot:spring-boot-starter-web")
+    annotationProcessor "org.projectlombok:lombok:1.18.4"
+    compile "org.projectlombok:lombok:1.18.4"
+    compile group: 'io.springfox', name: 'springfox-swagger2', version: '2.6.1'
+    compile group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.6.1'
+    compile group: 'io.jaegertracing', name: 'jaeger-client', version:'0.33.1'
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+}
+jar {
+    exclude "*.properties"
+    exclude "*.xml"
+}
+
+task copyDeps( type: Copy) {
+    from(configurations.runtime) {
+        include "*.jar"
+        exclude { details -> details.file.name.startsWith('maven') }
+    }
+    from('build/libs') {
+        include "*.original"
+    }
+    into rootProject.rootDir.getAbsolutePath() + "/docker/app/JaegerTutorial/libs"
+    rename{
+        String fileName -> fileName.replace('.original', '')
+    }
+}
+
+task copyLocal( type: Copy) {
+    from(configurations.runtime) {
+        include "*.jar"
+        exclude { details -> details.file.name.startsWith('maven') }
+    }
+    from('build/libs') {
+        include "*.original"
+    }
+    into rootProject.rootDir.getAbsolutePath() + "/local/libs"
+    rename{
+        String fileName -> fileName.replace('.original', '')
+    }
+}

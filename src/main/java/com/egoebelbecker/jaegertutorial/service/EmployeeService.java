@@ -1,19 +1,24 @@
 package com.egoebelbecker.jaegertutorial.service;
 
 import com.egoebelbecker.jaegertutorial.model.Employee;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
+import org.springframework.stereotype.Service;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 // This is incredibly optimistic code
+@Service
 public class EmployeeService {
 
-
     //Add jedis
-
     private Map<Integer, Employee> employeeMap = new HashMap<>();
+
+    private Tracer tracer;
+
+    public EmployeeService(Tracer tracer) {
+        this.tracer = tracer;
+    }
 
 
     // Create
@@ -84,16 +89,17 @@ public class EmployeeService {
     }
 
     // Delete
-    public boolean deleteEmployee(int id) {
+    public boolean deleteEmployee(int id, Span rootSpan) {
 
+        Span span = tracer.buildSpan("service delete employee").asChildOf(rootSpan).start();
+
+        boolean result = false;
         if (employeeMap.containsKey(id)) {
             employeeMap.remove(id);
-            return true;
-        } else {
-            return false;
+            result = true;
         }
-
+        span.finish();
+        return result;
     }
-
 
 }

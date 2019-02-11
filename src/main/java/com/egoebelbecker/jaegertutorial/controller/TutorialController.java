@@ -2,7 +2,7 @@ package com.egoebelbecker.jaegertutorial.controller;
 
 import com.egoebelbecker.jaegertutorial.model.Employee;
 import com.egoebelbecker.jaegertutorial.service.EmployeeService;
-import io.jaegertracing.Configuration;
+import com.google.common.collect.ImmutableMap;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.swagger.annotations.Api;
@@ -21,16 +21,22 @@ import java.util.UUID;
 @Api(value = "jaegertutorial", description = "Jaeger Tutorial service")
 public class TutorialController {
 
-    private EmployeeService employeeService = new EmployeeService();
+    private EmployeeService employeeService;
     private Tracer tracer;
+
+    public TutorialController(Tracer tracer, EmployeeService employeeService) {
+        this.tracer = tracer;
+        this.employeeService = employeeService;
+    }
+
 
     public void init() {
 
         // Set up a tracer
-        Configuration.SamplerConfiguration samplerConfig = Configuration.SamplerConfiguration.fromEnv().withType("const").withParam(1);
-        Configuration.ReporterConfiguration reporterConfig = Configuration.ReporterConfiguration.fromEnv().withLogSpans(true);
-        Configuration config = new Configuration("resttutorial").withSampler(samplerConfig).withReporter(reporterConfig);
-        tracer = config.getTracer();
+        //Configuration.SamplerConfiguration samplerConfig = Configuration.SamplerConfiguration.fromEnv().withType("const").withParam(1);
+        //Configuration.ReporterConfiguration reporterConfig = Configuration.ReporterConfiguration.fromEnv().withLogSpans(true);
+        //Configuration config = new Configuration("resttutorial").withSampler(samplerConfig).withReporter(reporterConfig);
+        //tracer = config.getTracer();
 
         // Add some employees
         employeeService.addEmployee(Employee.builder()
@@ -174,18 +180,22 @@ public class TutorialController {
         Span span = tracer.buildSpan("delete employee").start();
         span.setTag("delete-employees", UUID.randomUUID().hashCode());
 
+        HttpStatus status = HttpStatus.NO_CONTENT;
+
         try {
             int id = Integer.parseInt(idString);
             log.info("Received Request to delete employee {}", id);
-            if (employeeService.deleteEmployee(id)) {
-                return new ResponseEntity<>(null, HttpStatus.OK);
+            if (employeeService.deleteEmployee(id, span)) {
+                span.log(ImmutableMap.of("event", "succeeded-delete", "value", idString));
+                status = HttpStatus.OK;
             }
         } catch (NumberFormatException | NoSuchElementException nfe) {
+            span.log(ImmutableMap.of("event", "failed-delete", "value", idString));
             // Fall through
         }
 
         span.finish();
-        return new ResponseEntity(null, HttpStatus.NO_CONTENT);
+        return new ResponseEntity(null, status);
     }
 
 }

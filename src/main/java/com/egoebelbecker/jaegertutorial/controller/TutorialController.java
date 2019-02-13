@@ -32,12 +32,6 @@ public class TutorialController {
 
     public void init() {
 
-        // Set up a tracer
-        //Configuration.SamplerConfiguration samplerConfig = Configuration.SamplerConfiguration.fromEnv().withType("const").withParam(1);
-        //Configuration.ReporterConfiguration reporterConfig = Configuration.ReporterConfiguration.fromEnv().withLogSpans(true);
-        //Configuration config = new Configuration("resttutorial").withSampler(samplerConfig).withReporter(reporterConfig);
-        //tracer = config.getTracer();
-
         // Add some employees
         employeeService.addEmployee(Employee.builder()
                 .employeeId(1)
@@ -71,13 +65,15 @@ public class TutorialController {
     public ResponseEntity createEmployee(@RequestBody Employee employee) {
 
         Span span = tracer.buildSpan("create employee").start();
-        span.setTag("create-employee", UUID.randomUUID().hashCode());
 
         HttpStatus status = HttpStatus.FORBIDDEN;
 
         log.info("Receive Request to add employee {}", employee);
         if (employeeService.addEmployee(employee)) {
             status = HttpStatus.CREATED;
+            span.setTag("http.status_code", 201);
+        } else {
+            span.setTag("http.status_code", 403);
         }
         span.finish();
         return new ResponseEntity(null, status);
@@ -92,7 +88,6 @@ public class TutorialController {
         HttpStatus status = HttpStatus.NOT_FOUND;
 
         Span span = tracer.buildSpan("get employee").start();
-        span.setTag("get-employee", UUID.randomUUID().hashCode());
 
         try {
             int id = Integer.parseInt(idString);
@@ -115,7 +110,6 @@ public class TutorialController {
     public ResponseEntity getAllEmployees() {
 
         Span span = tracer.buildSpan("get employees").start();
-        span.setTag("get-employees", UUID.randomUUID().hashCode());
 
         log.info("Receive Request to Get All Employees");
         Collection<Employee> employees = employeeService.loadAllEmployees();
@@ -130,7 +124,6 @@ public class TutorialController {
     public ResponseEntity updateEmployee(@PathVariable("id") String idString, @RequestBody Employee employee) {
 
         Span span = tracer.buildSpan("update employee").start();
-        span.setTag("update-employees", UUID.randomUUID().hashCode());
 
         HttpStatus status = HttpStatus.NO_CONTENT;
 
@@ -154,7 +147,6 @@ public class TutorialController {
     public ResponseEntity patchEmployee(@PathVariable("id") String idString, @RequestBody Employee employee) {
 
         Span span = tracer.buildSpan("get employees").start();
-        span.setTag("get-employees", UUID.randomUUID().hashCode());
 
         HttpStatus status = HttpStatus.NO_CONTENT;
 
@@ -178,20 +170,24 @@ public class TutorialController {
     public ResponseEntity deleteEmployee(@PathVariable("id") String idString) {
 
         Span span = tracer.buildSpan("delete employee").start();
-        span.setTag("delete-employees", UUID.randomUUID().hashCode());
 
         HttpStatus status = HttpStatus.NO_CONTENT;
 
         try {
             int id = Integer.parseInt(idString);
             log.info("Received Request to delete employee {}", id);
+            span.log(ImmutableMap.of("event", "delete-request", "value", idString));
             if (employeeService.deleteEmployee(id, span)) {
-                span.log(ImmutableMap.of("event", "succeeded-delete", "value", idString));
+                span.log(ImmutableMap.of("event", "delete-success", "value", idString));
+                span.setTag("http.status_code", 200);
                 status = HttpStatus.OK;
+            } else {
+                span.log(ImmutableMap.of("event", "delete-fail", "value", "does not exist"));
+                span.setTag("http.status_code", 204);
             }
         } catch (NumberFormatException | NoSuchElementException nfe) {
-            span.log(ImmutableMap.of("event", "failed-delete", "value", idString));
-            // Fall through
+            span.log(ImmutableMap.of("event", "delete-fail", "value", idString));
+            span.setTag("http.status_code", 204);
         }
 
         span.finish();

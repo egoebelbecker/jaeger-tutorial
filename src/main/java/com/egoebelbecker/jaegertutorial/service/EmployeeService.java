@@ -38,6 +38,7 @@ public class EmployeeService {
 
     // Read all
     public Collection<Employee> loadAllEmployees() {
+
         return employeeMap.values();
     }
 

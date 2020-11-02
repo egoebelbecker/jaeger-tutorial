@@ -9,6 +9,8 @@ Use gradele build copyDeps to run in container. Build image in docker subdirecto
 
 
 ## Starting Jaeger
+
+```
 docker run -d --name jaeger \
   -e COLLECTOR_ZIPKIN_HTTP_PORT=9411 \
   -p 5775:5775/udp \
@@ -20,6 +22,7 @@ docker run -d --name jaeger \
   -p 14250:14250 \
   -p 9411:9411 \
   jaegertracing/all-in-one:1.18
+```
 
 ## Run with Docker on Mac
 
